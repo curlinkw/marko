@@ -1,13 +1,16 @@
+from typing import ClassVar
+from pydantic import BaseModel, ConfigDict
+
 from .helpers import camel_to_snake_case
 
 
-class Element:
+class Element(BaseModel):
     """This class holds attributes common to both the BlockElement and
     InlineElement classes.
     This class should not be subclassed by any other classes beside these.
     """
 
-    override: bool
+    override: ClassVar[bool]
 
     @classmethod
     def get_type(cls, snake_case: bool = False) -> str:
@@ -34,7 +37,7 @@ class Element:
         except ImportError:
             from pprint import pformat
 
-            if hasattr(self, "children"):
+            if hasattr(self, "children") and (not (self.children is None)):
                 children = f" children={pformat(self.children)}"
             else:
                 children = ""
