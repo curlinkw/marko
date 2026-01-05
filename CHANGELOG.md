@@ -1,3 +1,21 @@
+## v2.2.2(2026-01-05)
+
+### Fixed
+
+- Fix a bug in GFM alert block parsing where alert types were case-sensitive.
+- Fix GFM alert regex to disallow content on header line.
+
+## v2.2.1(2025-10-13)
+
+### Changed
+
+- Add support for Python 3.14 and drop support for Python 3.8.
+
+### Fixed
+
+- Fix mis-spelled textarea in regex for escaping (GFM).
+- Fix an inline parsing edge case with nested emphasis.
+
 ## v2.2.0(2025-08-08)
 
 ### Added
