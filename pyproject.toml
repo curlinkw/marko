@@ -2,11 +2,9 @@
 name = "marko"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "curlink19",email = "p.kurochkin200@gmail.com"}
-]
-readme = "README.md"
+authors = [{ name = "curlink19", email = "p.kurochkin200@gmail.com" }]
 requires-python = ">=3.12,<4.0"
+readme = "README.md"
 dependencies = [
     "commonmark (>=0.9.1,<0.10.0)",
     "markdown (>=3.8,<4.0)",
@@ -15,15 +13,19 @@ dependencies = [
     "mistletoe (>=1.4.0,<2.0.0)",
     "pydantic (>=2.11.5,<3.0.0)",
     "langchain-core (>=0.3.65,<0.4.0)",
-    "objprint (>=0.3.0,<0.4.0)"
+    "objprint (>=0.3.0,<0.4.0)",
 ]
 
-
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry.group.test.dependencies]
-pytest = "^8.4.0"
-python-slugify = "^8.0.4"
+[dependency-groups]
+test = [
+    "pytest>=8.4.0,<9",
+    "python-slugify>=8.0.4,<9",
+]
+
+[tool.uv]
+default-groups = ["test"]
 
