@@ -1,13 +1,92 @@
 from typing import cast, Any
 
 from marko._import_utils import import_attr
-from marko.elements.base import BaseElement
-from marko.elements.inline import InlineElement
-from marko.elements.block import BlockElement
+from marko.base_elements import (
+    BaseElement,
+    BlockElementType,
+    InlineElementType,
+)
+from marko.elements.block import (
+    CodeBlock,
+    Heading,
+    List,
+    ListItem,
+    BlankLine,
+    Quote,
+    FencedCode,
+    ThematicBreak,
+    HTMLBlock,
+    LinkRefDef,
+    SetextHeading,
+    Paragraph,
+)
+from marko.elements.inline import (
+    LineBreak,
+    Literal,
+    InlineHTML,
+    CodeSpan,
+    Emphasis,
+    StrongEmphasis,
+    Link,
+    Image,
+    AutoLink,
+)
 
 
-block_elements = [
-    "Document",
+def _import_elements(
+    elements: list[str], module: str | None = None, package: str | None = None
+) -> dict[str, Any]:
+    return {
+        (
+            element := cast(
+                BaseElement,
+                import_attr(
+                    attr_name=element_name, module_name=module, package=package
+                ),
+            )
+        ).get_type(): element
+        for element_name in elements
+    }
+
+
+COMMON_BLOCK_ELEMENTS: dict[str, BlockElementType] = _import_elements(
+    elements=[
+        "CodeBlock",
+        "Heading",
+        "List",
+        "ListItem",
+        "BlankLine",
+        "Quote",
+        "FencedCode",
+        "ThematicBreak",
+        "HTMLBlock",
+        "LinkRefDef",
+        "SetextHeading",
+        "Paragraph",
+    ],
+    module="block",
+    package=__spec__.name,
+) | _import_elements(elements=["Document"], module="base_elements", package="marko")
+
+COMMON_INLINE_ELEMENTS: dict[str, InlineElementType] = _import_elements(
+    elements=[
+        "LineBreak",
+        "Literal",
+        "InlineHTML",
+        "CodeSpan",
+        "Emphasis",
+        "StrongEmphasis",
+        "Link",
+        "Image",
+        "AutoLink",
+    ],
+    module="inline",
+    package=__spec__.name,
+) | _import_elements(elements=["RawText"], module="base_elements", package="marko")
+
+__all__ = [
+    "COMMON_INLINE_ELEMENTS",
+    "COMMON_BLOCK_ELEMENTS",
     "CodeBlock",
     "Heading",
     "List",
@@ -20,9 +99,6 @@ block_elements = [
     "LinkRefDef",
     "SetextHeading",
     "Paragraph",
-]
-
-inline_elements = [
     "LineBreak",
     "Literal",
     "InlineHTML",
@@ -32,35 +108,4 @@ inline_elements = [
     "Link",
     "Image",
     "AutoLink",
-    "RawText",
-]
-
-
-def _import_elements(module, elements: list[str]) -> dict[str, Any]:
-    return {
-        (
-            element := cast(
-                BaseElement,
-                import_attr(
-                    attr_name=element_name, module_name=module, package=__spec__.name
-                ),
-            )
-        ).get_type(): element
-        for element_name in elements
-    }
-
-
-COMMON_INLINE_ELEMENTS: dict[str, InlineElement] = _import_elements(
-    "inline", inline_elements
-)
-COMMON_BLOCK_ELEMENTS: dict[str, BlockElement] = _import_elements(
-    "block", block_elements
-)
-
-__all__ = [
-    "COMMON_INLINE_ELEMENTS",
-    "COMMON_BLOCK_ELEMENTS",
-    "BaseElement",
-    "BlockElement",
-    "InlineElement",
 ]

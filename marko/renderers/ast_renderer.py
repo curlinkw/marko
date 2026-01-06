@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import html
 import json
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, Any, overload, cast
 
 from marko.renderers.html_renderer import HTMLRenderer
 
@@ -14,8 +14,7 @@ from marko.utils import camel_to_snake_case
 from marko.renderers import BaseRenderer, force_delegate
 
 if TYPE_CHECKING:
-    from marko.elements import inline
-    from marko.elements.base import BaseElement
+    from marko.base_elements import BaseElement, RawText
 
 
 class ASTRenderer(BaseRenderer):
@@ -33,11 +32,13 @@ class ASTRenderer(BaseRenderer):
     delegate = False
 
     @force_delegate
-    def render_raw_text(self, element: inline.RawText) -> dict[str, Any]:
+    def render_raw_text(self, element: RawText) -> dict[str, Any]:
         return {
             "element": "raw_text",
             "children": (
-                html.unescape(element.children) if element.escape else element.children
+                html.unescape(cast(str, element.children))
+                if element.escape
+                else element.children
             ),
             "escape": element.escape,
         }

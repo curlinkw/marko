@@ -1,5 +1,5 @@
 from typing import Iterable
-from marko.elements.block import Document
+from marko.base_elements.block import Document
 from itertools import chain
 
 

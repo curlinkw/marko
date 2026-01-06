@@ -1,57 +1,16 @@
-"""
-Helper functions and data structures
-"""
-
 from __future__ import annotations
 
 from functools import partial
-from importlib import import_module
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Type, TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, overload, cast
 
 from marko.renderers import BaseRenderer
 
 if TYPE_CHECKING:
-    from marko.elements.base import BaseElement
+    from marko.base_elements.base import BaseElement
     from typing import Any, Callable, TypeVar
 
     RendererFunc = Callable[[Any, BaseElement], Any]
     TRenderer = TypeVar("TRenderer", bound=RendererFunc)
-    D = TypeVar("D", bound="_RendererDispatcher")
-
-
-class MarkoExtension(BaseModel):
-    parser_mixins: List[Type] = Field(default_factory=list)
-    renderer_mixins: List[Type] = Field(default_factory=list)
-
-    elements: List[Type] = Field(default_factory=list)
-    # must be Type[Element], but tests use as Any
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-
-def load_extension(name: str, **kwargs: Any) -> MarkoExtension:
-    """Load extension object from a string.
-    First try `marko.ext.<name>` if possible
-    """
-    module = None
-    if "." not in name:
-        try:
-            module = import_module(f"marko.ext.{name}")
-        except ImportError:
-            pass
-    if module is None:
-        try:
-            module = import_module(name)
-        except ImportError as e:
-            raise ImportError(f"Extension {name} cannot be imported") from e
-
-    try:
-        return module.make_extension(**kwargs)
-    except AttributeError:
-        raise AttributeError(
-            f"Module {name} does not have 'make_extension' attributte."
-        ) from None
 
 
 class _RendererDispatcher:
@@ -68,9 +27,10 @@ class _RendererDispatcher:
         self._mapping.setdefault((ASTRenderer, XMLRenderer), self.render_ast)
 
     def dispatch(
-        self: D, types: type[BaseRenderer] | tuple[type[BaseRenderer], ...]
-    ) -> Callable[[RendererFunc], D]:
-        def decorator(func: RendererFunc) -> D:
+        self: _RendererDispatcher,
+        types: type[BaseRenderer] | tuple[type[BaseRenderer], ...],
+    ) -> Callable[[RendererFunc], _RendererDispatcher]:
+        def decorator(func: RendererFunc) -> _RendererDispatcher:
             self._mapping[types] = func
             return self
 
@@ -95,18 +55,24 @@ class _RendererDispatcher:
             return getattr(parent, self.name)(r, element)
 
     @overload
-    def __get__(self: D, obj: None, owner: type) -> D: ...
+    def __get__(
+        self: _RendererDispatcher, obj: None, owner: type
+    ) -> _RendererDispatcher: ...
 
     @overload
-    def __get__(self: D, obj: BaseRenderer, owner: type) -> RendererFunc: ...
+    def __get__(
+        self: _RendererDispatcher, obj: BaseRenderer, owner: type
+    ) -> RendererFunc: ...
 
-    def __get__(self: D, obj: BaseRenderer | None, owner: type) -> RendererFunc | D:
+    def __get__(
+        self: _RendererDispatcher, obj: BaseRenderer | None, owner: type
+    ) -> RendererFunc | _RendererDispatcher:
         if obj is None:
             return self
         for types, func in self._mapping.items():
             if isinstance(obj, types):
-                return partial(func, obj)
-        return partial(self.super_render, obj)
+                return cast(RendererFunc, partial(func, obj))
+        return cast(RendererFunc, partial(self.super_render, obj))
 
 
 def render_dispatch(

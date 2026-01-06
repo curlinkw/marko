@@ -21,7 +21,7 @@ from typing import ClassVar, Any
 from pydantic import Field
 
 from marko import HTMLRenderer, helpers
-from marko.elements import inline, block
+from marko.base_elements import inline, block
 from marko.renderers.md_renderer import MarkdownRenderer
 from marko.utils import normalize_label
 

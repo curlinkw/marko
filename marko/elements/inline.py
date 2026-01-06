@@ -5,46 +5,13 @@ Inline(span) level elements
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Iterator, Sequence, ClassVar, Optional, Any
+from typing import TYPE_CHECKING, ClassVar, Optional, Any
 
 from marko import patterns
-from marko.elements.base import BaseElement
+from marko.base_elements import InlineElement, RawText
 
 if TYPE_CHECKING:
-    from marko.parser.inline_parsing import _Match
-    from marko.source import Source
-
-
-class InlineElement(BaseElement):
-    """Any inline element should inherit this class"""
-
-    #: Use to denote the precedence in parsing.
-    priority: ClassVar[int] = 5
-    #: element regex pattern.
-    pattern: ClassVar[re.Pattern | str] = ""
-    #: whether to parse children.
-    parse_children: ClassVar[bool] = False
-    #: which match group to parse.
-    parse_group: ClassVar[int] = 1
-    #: if True, it won't be included in parsing process but produced by
-    #: other elements instead.
-    virtual: ClassVar[bool] = False
-    #: If true, will replace the element which it derives from.
-    override: ClassVar[bool] = False
-
-    children: Optional[str | Sequence[BaseElement]] = None
-
-    @classmethod
-    def initialize_kwargs(cls, match: _Match) -> dict[str, Any]:
-        """Parses the matched object into an element"""
-        return {} if cls.parse_children else {"children": match.group(cls.parse_group)}
-
-    @classmethod
-    def find(cls, text: str, *, source: Source) -> Iterator[_Match]:
-        """This method should return an iterable containing matches of this element."""
-        if isinstance(cls.pattern, str):
-            cls.pattern = re.compile(cls.pattern)
-        return cls.pattern.finditer(text)
+    from marko.inline_parser import _Match
 
 
 class Literal(InlineElement):
@@ -195,19 +162,4 @@ class AutoLink(InlineElement):
             "children": [RawText.initialize(match.group(1))],
             "title": "",
             "dest": _dest,
-        }
-
-
-class RawText(InlineElement):
-    """The raw text is the fallback for all holes that doesn't match any others."""
-
-    virtual: ClassVar[bool] = True
-
-    escape: bool
-
-    @classmethod
-    def initialize_kwargs(cls, match: str, escape: bool = True) -> dict[str, Any]:  # type: ignore[override]
-        return {
-            "children": match,
-            "escape": escape,
         }

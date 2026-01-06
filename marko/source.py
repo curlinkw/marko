@@ -6,12 +6,11 @@ import types
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Generator, Match, Pattern, cast, overload
 
-from marko.elements.block import BlockElement, Document
+from marko.base_elements import BlockElement, Document
+from marko.markdown_spec import MarkdownSpec
 
 if TYPE_CHECKING:
     from typing import Literal
-
-    from marko.parser import Parser
 
 
 def _preprocess_text(text: str) -> str:
@@ -21,9 +20,7 @@ def _preprocess_text(text: str) -> str:
 class Source:
     """Wrapper class on content to be parsed"""
 
-    parser: Parser
-
-    def __init__(self, text: str) -> None:
+    def __init__(self, text: str, spec: MarkdownSpec) -> None:
         self._buffer = _preprocess_text(text)
         self.pos = 0
         self._anchor = 0
@@ -31,6 +28,7 @@ class Source:
         self.match: Match[str] | None = None
         #: Store temporary data during parsing.
         self.context = types.SimpleNamespace()
+        self.spec = spec
 
     @property
     def state(self) -> BlockElement:
@@ -102,7 +100,8 @@ class Source:
         :returns: the match object.
         """
         prefix_len = self.match_prefix(
-            self.prefix, self.next_line(require_prefix=False)  # type: ignore
+            self.prefix,
+            self.next_line(require_prefix=False),  # type: ignore
         )
         if prefix_len >= 0:
             match = self._expect_re(regexp, self.pos + prefix_len)
@@ -153,3 +152,24 @@ class Source:
         for s in self._states:
             if hasattr(s, "_second_prefix"):
                 s._prefix = s._second_prefix  # type: ignore
+
+
+def parse_source(source: Source) -> list[BlockElement]:
+    """Parse the source into a list of block elements."""
+    element_list = source.spec.non_virtual_block_elements
+    ast: list[BlockElement] = []
+    while not source.exhausted:
+        for ele_type in element_list:
+            if ele_type.match(source):
+                result = ele_type.parse(source)
+                if not hasattr(result, "priority"):
+                    # In some cases ``parse()`` won't return the element, but
+                    # instead some information to create one, which will be passed
+                    # to ``__init__()``.
+                    result = ele_type.initialize(result)  # type: ignore
+                ast.append(result)
+                break
+        else:
+            # Quit the current parsing and go back to the last level.
+            break
+    return ast

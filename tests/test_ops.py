@@ -1,6 +1,6 @@
 from marko import Markdown
 from marko.renderers.md_renderer import MarkdownRenderer
-from marko.elements.block import Document
+from marko.base_elements.block import Document
 from marko.ops import merge
 
 

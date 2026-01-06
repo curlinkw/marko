@@ -4,7 +4,7 @@ import textwrap
 import pytest
 
 import marko
-from marko.elements import block
+from marko.base_elements import block
 from marko.renderers.ast_renderer import ASTRenderer, XMLRenderer
 from marko.renderers.md_renderer import MarkdownRenderer
 from tests.normalize import normalize_html

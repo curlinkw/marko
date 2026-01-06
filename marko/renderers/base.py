@@ -6,11 +6,9 @@ from __future__ import annotations
 
 import html
 import re
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from typing import Any, Callable, TypeVar
 
-if TYPE_CHECKING:
-    from marko.elements.block import Document
-    from marko.elements.base import BaseElement
+from marko.base_elements import Document, Element
 
 _T = TypeVar("_T", bound="BaseRenderer")
 _charref_bak = html._charref  # type: ignore[attr-defined]
@@ -54,13 +52,13 @@ class BaseRenderer:
         html._charref = _charref_bak  # type: ignore[attr-defined]
         self.root_node = None
 
-    def render(self, element: BaseElement) -> Any:
+    def render(self, element: Element) -> Any:
         """Renders the given element to string.
 
         :param element: a element to be rendered.
         :returns: the output string or any values.
         """
-        from marko.elements.block import Document
+        from marko.base_elements.block import Document
 
         # Store the root node since it may be required by the render functions
         if not self.root_node:  # pragma: no cover

@@ -8,7 +8,7 @@ import itertools
 import re
 from typing import Any, cast, ClassVar, Optional
 
-from marko.elements import block, inline
+from marko.base_elements import block, inline
 from marko.source import Source
 
 

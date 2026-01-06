@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import re
 from typing import (
-    TYPE_CHECKING,
     Any,
     Match,
     NamedTuple,
@@ -14,65 +13,19 @@ from typing import (
     ClassVar,
     Optional,
 )
-from pydantic import Field
-
-from marko import patterns
-from marko.elements import inline
-from marko.elements.base import BaseElement
-from marko.parser import inline_parsing
+from marko.base_elements.base import BlockElement
+from marko.elements.inline import RawText, Literal
 from marko.utils import find_next, normalize_label, partition_by_spaces
-
-if TYPE_CHECKING:
-    from marko.source import Source
-
-
-class BlockElement(BaseElement):
-    """Any block element should inherit this class"""
-
-    #: Use to denote the precedence in parsing
-    priority: ClassVar[int] = 5
-    #: if True, it won't be included in parsing process but produced by other elements
-    #: other elements instead.
-    virtual: ClassVar[bool] = False
-    #: If true, will replace the element which it derives from.
-    override: ClassVar[bool] = False
-
-    #: An attribute to hold the children
-    children: list[BaseElement] = Field(default_factory=list)
-    #: If not empty, the body needs to be parsed as inline elements
-    inline_body: str = ""
-    _prefix: str = ""
-
-    @classmethod
-    def match(cls, source: Source) -> Any:
-        """Test if the source matches the element at current position.
-        The source should not be consumed in the method unless you have to.
-
-        :param source: the ``Source`` object of the content to be parsed
-        """
-        raise NotImplementedError()
-
-    @classmethod
-    def parse(cls, source: Source) -> Any:
-        """Parses the source. This is a proper place to consume the source body and
-        return an element or information to build one. The information tuple will be
-        passed to ``__init__`` method afterwards. Inline parsing, if any, should also
-        be performed here.
-
-        :param source: the ``Source`` object of the content to be parsed
-        """
-        raise NotImplementedError()
-
-    def __lt__(self, o: BlockElement) -> bool:
-        return self.priority < o.priority
-
-
-class Document(BlockElement):
-    """Document node element."""
-
-    virtual: ClassVar[bool] = True
-
-    link_ref_defs: dict[str, tuple[str, str]] = Field(default_factory=dict)
+from marko.patterns import tags, tag_name, attribute_no_lf
+from marko.inline_parser import (
+    Group,
+    _parse_link_label,
+    _parse_link_separator,
+    _parse_link_dest_title,
+    ParseError,
+    _EMPTY_GROUP,
+)
+from marko.source import Source, parse_source
 
 
 class BlankLine(BlockElement):
@@ -154,7 +107,7 @@ class CodeBlock(BlockElement):
 
     @classmethod
     def initialize_kwargs(cls, lines: str) -> dict[str, Any]:
-        return {"children": [inline.RawText.initialize(lines, False)]}
+        return {"children": [RawText.initialize(lines, False)]}
 
     @classmethod
     def match(cls, source: Source) -> str:
@@ -228,8 +181,8 @@ class FencedCode(BlockElement):
     @classmethod
     def initialize_kwargs(cls, match: tuple[str, str, str]) -> dict[str, Any]:
         return {
-            "children": [inline.RawText.initialize(match[2], False)],
-            "lang": inline.Literal.strip_backslash(match[0]),
+            "children": [RawText.initialize(match[2], False)],
+            "lang": Literal.strip_backslash(match[0]),
             "extra": match[1],
         }
 
@@ -320,13 +273,13 @@ class HTMLBlock(BlockElement):
         if source.expect_re(r" {,3}<!\[CDATA\["):
             source.context.html_end = re.compile(r"\]\]>")
             return 5
-        block_tag = r"(?:{})".format("|".join(patterns.tags))
+        block_tag = r"(?:{})".format("|".join(tags))
         if source.expect_re(r"(?im) {,3}</?%s(?: +|/?>|$)" % block_tag):
             source.context.html_end = None
             return 6
         if source.expect_re(
             r"(?m) {,3}(<%(tag)s(?:%(attr)s)*[^\n\S]*/?>|</%(tag)s[^\n\S]*>)[^\n\S]*$"
-            % {"tag": patterns.tag_name, "attr": patterns.attribute_no_lf}
+            % {"tag": tag_name, "attr": attribute_no_lf}
         ):
             source.context.html_end = None
             return 7
@@ -374,32 +327,27 @@ class Paragraph(BlockElement):
 
     @classmethod
     def break_paragraph(cls, source: Source, lazy: bool = False) -> bool:
-        parser = source.parser
         prev_match = source.match
         try:
             if (
-                parser.block_elements["Quote"].match(source)
-                or parser.block_elements["Heading"].match(source)
-                or parser.block_elements["BlankLine"].match(source)
-                or parser.block_elements["FencedCode"].match(source)
+                Quote.match(source)
+                or Heading.match(source)
+                or BlankLine.match(source)
+                or FencedCode.match(source)
             ):
                 return True
-            if (
-                lazy
-                and isinstance(source.state, List)
-                and parser.block_elements["ListItem"].match(source)
-            ):
+            if lazy and isinstance(source.state, List) and ListItem.match(source):
                 return True
-            if parser.block_elements["List"].match(source):
-                result = cast(
-                    "type[ListItem]", parser.block_elements["ListItem"]
-                ).parse_leading(source.next_line().rstrip(), 0)
+            if List.match(source):
+                result = cast("type[ListItem]", ListItem).parse_leading(
+                    source.next_line().rstrip(), 0
+                )
                 if lazy or (result[1][:-1] == "1" or result[1] in "*-+") and result[3]:
                     return True
-            html_type = parser.block_elements["HTMLBlock"].match(source)
+            html_type = HTMLBlock.match(source)
             if html_type and html_type != 7:
                 return True
-            if parser.block_elements["ThematicBreak"].match(source):
+            if ThematicBreak.match(source):
                 if not lazy and cls.is_setext_heading(source.next_line()):
                     return False
                 return True
@@ -423,7 +371,7 @@ class Paragraph(BlockElement):
                 if cls.is_setext_heading(line):
                     return cast(
                         "type[SetextHeading]",
-                        source.parser.block_elements["SetextHeading"],
+                        SetextHeading,
                     ).initialize(lines)  # type: ignore
             else:
                 # check lazy continuation, store the previous state stack
@@ -458,7 +406,7 @@ class Quote(BlockElement):
     def parse(cls, source: Source) -> Quote:
         state = cls()
         with source.under_state(state):
-            state.children = source.parser.parse_source(source)
+            state.children = parse_source(source)
         return state
 
 
@@ -500,15 +448,12 @@ class List(BlockElement):
         children = []
         tight = True
         has_blank_line = False
-        parser = source.parser
         with source.under_state(state):
             while not source.exhausted:
-                if parser.block_elements["ListItem"].match(source):
-                    el = parser.block_elements["ListItem"].parse(source)
+                if ListItem.match(source):
+                    el = ListItem.parse(source)
                     if not isinstance(el, BlockElement):
-                        el = cast(
-                            "type[ListItem]", parser.block_elements["ListItem"]
-                        ).initialize(el)
+                        el = cast("type[ListItem]", ListItem).initialize(el)
                     children.append(el)
                     source.anchor()
                     if has_blank_line:
@@ -575,7 +520,7 @@ class ListItem(BlockElement):
 
     @classmethod
     def match(cls, source: Source) -> bool:
-        if source.parser.block_elements["ThematicBreak"].match(source):
+        if ThematicBreak.match(source):
             return False
         if not source.expect_re(cls.pattern):
             return False
@@ -607,7 +552,7 @@ class ListItem(BlockElement):
                 source.consume()
                 if not source.next_line() or not source.next_line().strip():  # type: ignore[union-attr]
                     return state
-            state.children = source.parser.parse_source(source)
+            state.children = parse_source(source)
         if isinstance(state.children[-1], BlankLine):
             # Remove the last blank line from list item
             blankline = cast(BlankLine, state.children.pop())
@@ -626,9 +571,9 @@ class LinkRefDef(BlockElement):
     )
 
     class ParseInfo(NamedTuple):
-        link_label: inline_parsing.Group
-        link_dest: inline_parsing.Group
-        link_title: inline_parsing.Group
+        link_label: Group
+        link_dest: Group
+        link_title: Group
         end: int
 
     label: str
@@ -647,16 +592,16 @@ class LinkRefDef(BlockElement):
         if not m:
             return False
         text = source._buffer
-        link_label = inline_parsing._parse_link_label(text, m.start(1))
+        link_label = _parse_link_label(text, m.start(1))
         if not link_label:  # no ending bracket
             return False
         if link_label.end >= len(text) or text[link_label.end] != ":":
             # no colon after the ending bracket
             return False
-        i = inline_parsing._parse_link_separator(text, link_label.end + 1)
+        i = _parse_link_separator(text, link_label.end + 1)
         try:
-            link_dest, link_title = inline_parsing._parse_link_dest_title(text, i)
-        except inline_parsing.ParseError:
+            link_dest, link_title = _parse_link_dest_title(text, i)
+        except ParseError:
             return False
         i = max(link_dest.end, link_title.end)
         end = find_next(text, "\n", i)
@@ -666,7 +611,7 @@ class LinkRefDef(BlockElement):
             end = len(text)
         if text[i:end].strip():
             if link_title.text and "\n" in text[link_dest.end : link_title.start]:
-                link_title = inline_parsing._EMPTY_GROUP
+                link_title = _EMPTY_GROUP
                 end = find_next(text, "\n", link_dest.end) + 1
             else:
                 # There is content after the link title

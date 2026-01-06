@@ -9,15 +9,12 @@ from typing import TYPE_CHECKING, Match, NamedTuple, Union, ClassVar
 
 from marko import patterns
 from marko.utils import find_next, is_paired, normalize_label
-from marko.elements.inline import InlineElement
-
+from marko.base_elements import InlineElement, InlineElementType, BaseElementType
 
 if TYPE_CHECKING:
     from marko.source import Source
 
     _Match = Union[Match[str], "MatchObj"]
-
-    BaseElementType = type[InlineElement]
 
 
 class Group(NamedTuple):
@@ -35,10 +32,9 @@ class ParseError(ValueError):
     """Raised when parsing fails."""
 
 
-def parse(
+def parse_inline(
     text: str,
-    elements: list[BaseElementType],
-    fallback: BaseElementType,
+    fallback: InlineElementType,
     source: Source,
 ) -> list[InlineElement]:
     """Parse given text and produce a list of inline elements.
@@ -48,13 +44,15 @@ def parse(
     :param fallback: fallback class when no other element type is matched.
     """
 
+    elements: list[InlineElementType] = source.spec.non_virtual_inline_elements
+
     class LinkOrEmph(InlineElement):
         parse_children: ClassVar[bool] = True
 
         @classmethod
         def initialize(cls, match: _Match) -> InlineElement:  # type: ignore
             assert isinstance(match, MatchObj)
-            return source.parser.inline_elements[match.etype].initialize(match)
+            return source.spec.inline_elements[match.etype].initialize(match)
 
     # A raw list of elements that may contain overlaps.
     tokens: list[Token] = []
@@ -129,10 +127,10 @@ class Token:
 
     def __init__(
         self,
-        etype: BaseElementType,
+        etype: InlineElementType,
         match: _Match,
         text: str,
-        fallback: BaseElementType,
+        fallback: InlineElementType,
     ) -> None:
         self.etype = etype
         self.match = match

@@ -16,12 +16,12 @@ from typing import TYPE_CHECKING, Iterable, cast
 
 from .helpers import MarkoExtension, load_extension
 from marko.renderers.html_renderer import HTMLRenderer
-from .parser import Parser
+from .parse import Parser
 from marko.renderers import BaseRenderer
 
 if TYPE_CHECKING:
-    from marko.elements.block import Document
-    from marko.parser import BaseElementType
+    from marko.base_elements.block import Document
+    from marko.parse import BaseElementType
 
 __version__ = "2.2.2"
 
