@@ -25,22 +25,6 @@ from marko.utils import find_next, normalize_label, partition_by_spaces
 if TYPE_CHECKING:
     from marko.source import Source
 
-__all__ = (
-    "Document",
-    "CodeBlock",
-    "Heading",
-    "List",
-    "ListItem",
-    "BlankLine",
-    "Quote",
-    "FencedCode",
-    "ThematicBreak",
-    "HTMLBlock",
-    "LinkRefDef",
-    "SetextHeading",
-    "Paragraph",
-)
-
 
 class BlockElement(BaseElement):
     """Any block element should inherit this class"""
@@ -440,9 +424,7 @@ class Paragraph(BlockElement):
                     return cast(
                         "type[SetextHeading]",
                         source.parser.block_elements["SetextHeading"],
-                    ).initialize(
-                        lines
-                    )  # type: ignore
+                    ).initialize(lines)  # type: ignore
             else:
                 # check lazy continuation, store the previous state stack
                 states = source._states[:]

@@ -13,8 +13,8 @@ from marko.elements import (
     BlockElement,
     InlineElement,
     BaseElement,
-    INLINE_ELEMENTS,
-    BLOCK_ELEMENTS,
+    COMMON_INLINE_ELEMENTS,
+    COMMON_BLOCK_ELEMENTS,
 )
 from marko.elements.block import Document
 
@@ -75,11 +75,11 @@ class Parser(BaseModel):
 
         return {
             "inline_elements": {
-                **INLINE_ELEMENTS,
+                **COMMON_INLINE_ELEMENTS,
                 **inline_elements,
             },
             "block_elements": {
-                **BLOCK_ELEMENTS,
+                **COMMON_BLOCK_ELEMENTS,
                 **block_elements,
             },
             "extra_elements": extra_elements,

@@ -14,19 +14,6 @@ if TYPE_CHECKING:
     from marko.parser.inline_parsing import _Match
     from marko.source import Source
 
-__all__ = (
-    "LineBreak",
-    "Literal",
-    "InlineHTML",
-    "CodeSpan",
-    "Emphasis",
-    "StrongEmphasis",
-    "Link",
-    "Image",
-    "AutoLink",
-    "RawText",
-)
-
 
 class InlineElement(BaseElement):
     """Any inline element should inherit this class"""
